@@ -72,47 +72,21 @@ Stress overlays (deterministic central, terminal today's money):
 See [Outputs](#outputs) below for what each artifact contains.
 *(All figures are from the fictional example, for illustration only.)*
 
-### Prefer the command line?
-
-Everything Claude does, you can do yourself:
-
-```bash
-cd model
-python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
-
-# See the fictional demo immediately (no setup needed):
-.venv/bin/python run.py --config config.example.yaml --scenario recommended
-
-# Set up your own plan: copy the template into the git-ignored personal/ folder,
-# fill in the fields marked `# FILL`, then run it:
-cp config/config.skeleton.yaml config/personal/config.yaml
-.venv/bin/python run.py --scenario recommended
-```
-
 ---
 
 ## Using it
 
-| You want to… | Do this |
-|---|---|
-| Run the recommended plan | `run.py --scenario recommended` |
-| Run every scenario at once | `run.py --scenario all` |
-| Run one named scenario | `run.py --scenario rent_forever` |
-| Add a chart (PNG) | add `--chart` |
-| More Monte Carlo precision | add `--trials 5000` |
-| Try the demo without setup | add `--config config.example.yaml` |
+Once your plan is set up, you **just ask** — in plain English, in Claude Code. Claude
+translates the question into a scenario, runs the model, and explains the result. You never
+touch YAML or the command line for this. For example:
 
-**Creating a new scenario.** Scenarios are *sparse overrides* of your base config — change
-only what differs. Add a block to [`model/config/scenarios.yaml`](model/config/scenarios.yaml)
-and it becomes available to `--scenario`. For example, "what if we retire a year earlier":
+> *"Model me retiring at 50."*
+> *"What happens if I retire at 60 and pay 20k toward my child's house deposit when I'm 53?"*
+> *"Compare renting forever against buying in 2030."*
+> *"How much worse is it if returns are 1% lower for my whole retirement?"*
 
-```yaml
-  retire_early:
-    events: { person1_retires: { year: 2052 } }
-```
-
-The shipped file has worked examples (cheaper house, no inheritance, rent forever, save
-more, max super, …) to copy from.
+Claude figures out which inputs to override, runs it, and tells you what changed — the
+probability your money sustains, the funded ratio, terminal wealth.
 
 **Reading the headline numbers:** *sustains* = % of Monte Carlo paths where spending is met
 every year without depleting the pool; *preserved* = % where terminal capital stays near its
@@ -171,6 +145,51 @@ nothing you put there (your `config.yaml`, plan variants, exported numbers) is e
 committed. The tracked `config.skeleton.yaml` and `config.example.yaml` contain no real
 data. If you fork this repo, a quick `git status` should never show anything under
 `config/personal/` except its `README.md`.
+
+## Doing it by hand (optional)
+
+You never *need* any of this — Claude does it all for you. But the model is a plain Python
+CLI with plain-text config, so if you'd rather drive it yourself, you can.
+
+**Set up and run:**
+
+```bash
+cd model
+python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+
+# See the fictional demo immediately (no setup needed):
+.venv/bin/python run.py --config config.example.yaml --scenario recommended
+
+# Set up your own plan: copy the template into the git-ignored personal/ folder,
+# fill in the fields marked `# FILL`, then run it:
+cp config/config.skeleton.yaml config/personal/config.yaml
+.venv/bin/python run.py --scenario recommended
+```
+
+| You want to… | Do this |
+|---|---|
+| Run the recommended plan | `run.py --scenario recommended` |
+| Run every scenario at once | `run.py --scenario all` |
+| Run one named scenario | `run.py --scenario rent_forever` |
+| Add a chart (PNG) | add `--chart` |
+| More Monte Carlo precision | add `--trials 5000` |
+| Try the demo without setup | add `--config config.example.yaml` |
+
+**Add a scenario by hand.** Scenarios are *sparse overrides* of your base config — change
+only what differs. Add a block to
+[`model/config/scenarios.yaml`](model/config/scenarios.yaml) and it becomes available to
+`--scenario`. For example, "what if we retire a year earlier":
+
+```yaml
+  retire_early:
+    events: { person1_retires: { year: 2052 } }
+```
+
+The shipped file has worked examples (cheaper house, no inheritance, rent forever, save
+more, max super, …) to copy from. *(This is exactly the file Claude edits when you ask in
+plain English — you're just doing it manually.)*
+
+---
 
 ## License
 
