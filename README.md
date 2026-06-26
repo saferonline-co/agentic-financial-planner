@@ -103,7 +103,7 @@ fans the per-scenario files into `model/outputs/scenarios/`. Each run produces:
 | Artifact | What it is | Example |
 |---|---|---|
 | **`<scenario>-summary.md`** | A readable per-scenario report — headline P(sustains)/preserved/funded ratio, the net-worth trajectory, the retirement-spend glidepath, full Monte Carlo percentiles, and the documented assumptions. | [example-summary.md](docs/assets/example-summary.md) |
-| **`<scenario>-chart.png`** | *(with `--chart`)* Assets (net worth, investments, house, cash) on the left axis and annual cash flows on the right, across your whole lifetime. | [example-chart.png](docs/assets/example-chart.png) |
+| **`<scenario>-chart.png`** | *(with `--chart`)* Two stacked panels sharing a timeline: **asset values** (net worth, investments, house, cash) on top and **annual cash flow** (saving/drawdown, housing, aged care) below, across your whole lifetime. | [example-chart.png](docs/assets/example-chart.png) |
 | **`scenarios.xlsx`** | An Excel workbook: a **Summary** grid comparing every scenario, a **MonteCarlo** sheet, and a per-scenario **annual ledger** (assets → liabilities → net assets → inflows/outflows → net cash-flow → net worth, years as columns, in today's money). | — |
 
 Also printed to the console: the one-line headline per scenario and an FCA-style **stress
