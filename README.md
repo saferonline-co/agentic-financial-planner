@@ -1,9 +1,10 @@
 # AI-First Financial Planning Tool
 
-An AI-first, config-driven **lifetime cash-flow model** for a household — designed to be used
-conversationally with [Claude Code](https://claude.com/claude-code) or any LLM you like.
-Claude asks about your goals and finances in plain English; you answer; it fills in the
-config, runs the model, and explains the results.
+An AI-assisted, config-driven **lifetime cash-flow model** for household financial planning.
+
+The engine is a transparent Python model, your financial data lives in local config files,
+and an LLM coding assistant makes it conversational. You answer questions in plain English;
+the assistant fills the config, runs scenarios, and explains the results.
 
 ## It helps you meet your goals
 
@@ -182,6 +183,10 @@ nothing you put there (your `config.yaml`, plan variants, exported numbers) is e
 committed. The tracked `config.skeleton.yaml` and `config.example.yaml` contain no real
 data. If you fork this repo, a quick `git status` should never show anything under
 `config/personal/` except its `README.md`.
+
+The model and generated outputs run locally. If you use a hosted LLM, the prompts/context
+you send to that LLM may leave your device, so treat those conversations as potentially
+containing private financial information.
 
 ## Doing it by hand (optional)
 
