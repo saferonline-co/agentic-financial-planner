@@ -16,5 +16,8 @@ venv/
 # Stray logs
 *.log
 
+# Local launch drafts
+announce-post.md
+
 # Local Claude Code settings (machine-specific; not for the shared repo)
 .claude/settings.local.json
