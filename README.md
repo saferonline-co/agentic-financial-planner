@@ -1,65 +1,91 @@
-# AI First Financial Planning Tool
+# AI-First Financial Planning Tool
 
-A config-driven **lifetime cash-flow model** for a household — designed to be set up and
-driven conversationally with [Claude Code](https://claude.com/claude-code). You describe
-your goals and finances in plain English; Claude fills in the config and runs the model;
-you get deterministic **and** Monte Carlo projections of whether your money lasts.
+An AI-first, config-driven **lifetime cash-flow model** for a household — designed to be used
+conversationally with [Claude Code](https://claude.com/claude-code) or any LLM you like.
+Claude asks about your goals and finances in plain English; you answer; it fills in the
+config, runs the model, and explains the results.
 
-It answers two questions:
+## It helps you meet your goals
 
-1. **Can we retire when we want**, with the lifestyle we want?
-2. **Does our capital last** — do investments + pensions + super cover our target spend
-   without prematurely running the pot dry?
+The model tracks your asset values and cash flows over your whole life, so it can answer the questions that matter:
 
-Under the hood it's a recognised industry-standard method (a cash-flow forward simulator,
-the approach used by Voyant / eMoney / RightCapital and expected by FCA FG22/5) with full
-Australian-resident tax, per-bucket drawdown under super-access rules, a spending
-glidepath, stress overlays, and an actuarial funded ratio.
+1. **I can't take much more — when can I afford to retire?** I want $X a month once I stop working — when do I get there?
+2. **Will our money outlast us?** Do investments + pensions + super cover our retirement spend without the pot running dry?
 
-> ⚠️ **Not financial advice.** This is a decision-support model for education and
+## Then ask it anything
+
+Your goals are just the start. Ask any "what if" you can dream up — seriously:
+
+- *What happens to our net worth if I get married in two years and spend $25k on the wedding?*
+- *If house prices dip this year and take three years to recover, when's the sweet spot to buy?*
+- *Can I buy a $1M house and still not run out of money in retirement?*
+- *When can I retire if I add $5k to my super every year?*
+- *Can my husband stop working if we move to a cheaper rental that saves us $800/month?*
+
+## Not financial advice
+> ⚠️ **This tool is not financial advice.** It is a decision-support model for education and
 > exploration. Outputs are projections from assumptions *you* control, not predictions or
 > recommendations. Tax/structure defaults are illustrative (Australian by default).
 > Confirm anything material with a licensed adviser. See [LICENSE](LICENSE).
 
----
-
-## Getting started
+## Quick start
 
 This is built to be **driven by [Claude Code](https://claude.com/claude-code)** — you talk,
 it does the work. You don't need to run commands or edit YAML by hand.
 
-1. Get the project: clone (or fork) this repo and open the folder in Claude Code
-   (or run `claude` inside it).
-2. Say:
+**Prerequisites:** Python 3.10+ and Claude Code. That's all.
 
-   > **"Let's start"**   *(or "help me set up my plan")*
+1. **Get the project** — clone (or fork) this repo and open the folder in Claude Code (or run `claude` inside it).
+2. **Say the word** — for example:
+
+   > **"Let's start"** — or *"help me set up my plan"*, or just *"vamos!"*
+
+   Say it however you like; Claude reads your intent, not magic words.
 
 That's it. Claude then:
 
 - **sets up the Python environment** (creates the venv, installs dependencies);
-- **runs the fictional demo** so you can see what the model produces before entering anything;
-- **asks you about your goals and finances** — when you want to retire, target spend, home
+- **runs the fictional demo** so you can see what the model produces before you enter anything;
+- **asks about your goals and finances** — when you want to retire, target spend, home
   vs. rent, balances — and writes your answers into your own **private, git-ignored** config;
-- **runs your plan and explains the results** (can your income sustain it, funded ratio,
-  terminal wealth) and helps you explore "what if" scenarios.
+- **runs your plan and explains the results**, then helps you explore "what if" scenarios.
 
-The full flow Claude follows is in [CLAUDE.md](CLAUDE.md) — you don't need to read it.
+The full flow Claude follows is in [CLAUDE.md](CLAUDE.md) — you don't need to read it. When the
+first run finishes, head to **[Checking the results](#checking-the-results)**.
 
-**Prerequisites:** Python 3.10+ and Claude Code. That's all.
+## Checking the results
 
-### What you get
+When a run finishes, Claude talks you through it in plain English — but here's how to read
+what comes back yourself.
 
-Each run writes a markdown summary, an Excel workbook, and (with `--chart`) a PNG of the
-assets and cash flows over your lifetime. Here's the chart for the bundled fictional example:
-
-![Sample assets & cash-flow chart from the fictional example](docs/assets/example-chart.png)
-
-The console summary for the same run looks like this:
+**The headline line** — one row per scenario, printed to the console:
 
 ```
 scenario                sustains  preserved  funded   P50 terminal
 recommended                 83%       60%    1.42         5.75M
+```
 
+| Number | The question it answers | What to look for |
+|---|---|---|
+| **sustains** | Across thousands of simulated market histories, in how many is your spending met *every* year without the pool running dry? | Higher is safer — high-80s % and up is a common comfort target; well below that flags a real chance of falling short. |
+| **preserved** | In how many does your capital end near where it started — i.e. you live off the returns, not the principal? | High if you want to leave a legacy or keep a buffer; low is fine if you mean to spend it down. |
+| **funded** | The *funded ratio*: everything you have and will receive ÷ everything you plan to spend (both as present values). | **≥ 1.0** is fully funded. 1.42 ≈ 42% headroom. |
+| **P50 terminal** | The median amount left at the very end, in today's money. | Comfortably above zero; the full P10–P90 spread is in the report. |
+
+**The chart** (add `--chart`) — your whole financial life on one timeline: asset values on
+top, the cash flowing in and out below.
+
+![Sample assets & cash-flow chart from the fictional example](docs/assets/example-chart.png)
+
+**The full report** — a markdown summary with the net-worth trajectory, the retirement-spend
+glidepath, the complete Monte Carlo percentile spread, and every assumption used:
+**[example-summary.md](docs/assets/example-summary.md)**.
+
+Claude also prints an FCA-style **stress table** — which shocks (a year-one crash, a decade
+of weak returns, high inflation, living longer) would deplete the pool, so you see the
+failure modes and not just the rosy central case:
+
+```
 Stress overlays (deterministic central, terminal today's money):
   base                5.19M  ok
   year1_crash         2.80M  ok
@@ -68,9 +94,23 @@ Stress overlays (deterministic central, terminal today's money):
   ...
 ```
 
-…and the full markdown report is here: **[docs/assets/example-summary.md](docs/assets/example-summary.md)**.
-See [Outputs](#outputs) below for what each artifact contains.
-*(All figures are from the fictional example, for illustration only.)*
+For the full list of files each run produces, see [Outputs](#outputs).
+*(All figures above are from the bundled fictional example — illustration only.)*
+
+## How it works
+
+Under the hood it's a recognised industry-standard method (a cash-flow forward simulator,
+the approach used by Voyant / eMoney / RightCapital and expected by FCA FG22/5) with full
+Australian-resident tax, per-bucket drawdown under super-access rules, a spending
+glidepath, stress overlays, and an actuarial funded ratio.
+
+### What's cool about this approach
+
+It's **deterministic** — same inputs, same outputs, every time. No black box; just the
+maths, laid out so you can check it.
+
+And it's **agentic** — you don't edit spreadsheets or YAML, you just chat and tell it what
+you want to explore.
 
 ---
 
@@ -86,11 +126,8 @@ touch YAML or the command line for this. For example:
 > *"How much worse is it if returns are 1% lower for my whole retirement?"*
 
 Claude figures out which inputs to override, runs it, and tells you what changed — the
-probability your money sustains, the funded ratio, terminal wealth.
-
-**Reading the headline numbers:** *sustains* = % of Monte Carlo paths where spending is met
-every year without depleting the pool; *preserved* = % where terminal capital stays near its
-start; *funded ratio* = PV(assets + income) / PV(spending), where ≥ 1.0 means fully funded.
+probability your money sustains, the funded ratio, terminal wealth (see
+**[Checking the results](#checking-the-results)** for what those mean).
 
 ---
 
