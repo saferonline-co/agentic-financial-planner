@@ -1,0 +1,300 @@
+# =============================================================================
+# EXAMPLE CONFIG — a complete, FICTIONAL, working configuration.
+#
+# Purpose:
+#   * shows what a fully-filled config looks like (copy it to config.yaml and edit,
+#     or let the onboarding assistant fill config.yaml for you);
+#   * run it as a "try it now" demo:
+#       model/.venv/bin/python model/run.py --config config.example.yaml --scenario recommended
+#
+# An illustrative YOUNG couple: person1 (younger, the horizon/longevity person,
+# age 32) and person2 (older, age 34), with ~$400k between them, both planning to
+# retire at 60. Every number is invented and internally consistent — the account
+# balances + tax_liability reconcile to meta.reconcile_target. Currency is AUD
+# throughout (convert to another currency only on demand at meta.fx).
+# =============================================================================
+
+meta:
+  base_currency: AUD
+  start_year: 2026
+  fx:
+    FOREIGN_AUD: 2.0
+  reconcile_target: 400000    # sum(account balances) + tax_liability; typo guard. Omit to skip.
+
+people:
+  person1:
+    dob: 1994                    # age 32 in 2026
+    super_preservation_age: 60
+    state_pension_age: 68     # -> claims 2062 (see pensions.person1.start_year)
+  person2:
+    dob: 1992                    # age 34 in 2026
+    super_preservation_age: 60
+    state_pension_age: 67     # -> claims 2059
+  older_partner: person2         # glidepath spend is pegged to this person's age
+  longevity_age: 92              # model horizon = horizon_person's age 92 -> 2086
+  horizon_person: person1        # run to this person's longevity_age
+
+assumptions:
+  # Per-item inflation (industry standard: items inflate at their own rate)
+  inflation:
+    cpi: 0.025             # general price inflation (display deflator)
+    earnings: 0.038        # wage growth (CPI + ~1.3%)
+    care_cost: 0.05        # aged-care cost inflation (CPI + ~2.5%)
+  # Capital Market Assumptions — ARITHMETIC means for Monte Carlo.
+  # Deterministic central return = geometric ~= mean - sd^2/2.
+  cma:
+    asset_classes:
+      # income_yield = the portion of total return DISTRIBUTED each year (taxed at
+      # marginal); the rest is capital growth (taxed as CGT on sale).
+      equity:   { mean: 0.078, sd: 0.17, income_yield: 0.030 }
+      bond:     { mean: 0.045, sd: 0.06, income_yield: 0.040 }
+      property: { mean: 0.055, sd: 0.10, income_yield: 0.0 }
+      cash:     { mean: 0.040, sd: 0.008, income_yield: 0.040 }
+    correlation:
+      # symmetric; order: equity, bond, property, cash
+      equity:   { equity: 1.00, bond: 0.25, property: 0.40, cash: 0.00 }
+      bond:     { equity: 0.25, bond: 1.00, property: 0.20, cash: 0.10 }
+      property: { equity: 0.40, bond: 0.20, property: 1.00, cash: 0.05 }
+      cash:     { equity: 0.00, bond: 0.10, property: 0.05, cash: 1.00 }
+  deterministic_band: 0.03   # +/- around central (FCA COBS 13 low/intermediate/high)
+  real_risk_free: 0.015      # real risk-free rate for funded-ratio discounting
+
+# Opening balance sheet. Sum(accounts.balance) + tax_liability == meta.reconcile_target.
+# Each account: wrapper, balance, asset allocation (-> CMA return), access_year,
+# owner, optional cost_base (CGT) and legacy_return.
+accounts:
+  cash:
+    wrapper: cash
+    balance: 50000
+    owner: joint
+    access_year: 2026
+    allocation: { cash: 1.0 }
+    legacy_return: 0.04
+  etf:
+    wrapper: taxable
+    balance: 50000
+    owner: joint
+    access_year: 2026
+    allocation: { equity: 0.90, bond: 0.10 }
+    cost_base: 50000
+    legacy_return: 0.07
+  person1_foreign_pension:
+    wrapper: foreign_pension
+    balance: 50000
+    owner: person1
+    access_year: 2049        # foreign pension earliest access (drawn only once retired)
+    allocation: { equity: 0.60, bond: 0.40 }
+    legacy_return: 0.065
+  person2_foreign_pension:
+    wrapper: foreign_pension
+    balance: 40000
+    owner: person2
+    access_year: 2047
+    allocation: { equity: 0.60, bond: 0.40 }
+    legacy_return: 0.065
+  person1_taxfree:
+    wrapper: taxfree
+    balance: 10000
+    owner: person1
+    access_year: 2054        # age 60
+    allocation: { equity: 0.90, bond: 0.10 }
+    legacy_return: 0.07
+  person1_super:
+    wrapper: super           # super_accum -> super_pension at retirement
+    balance: 90000
+    owner: person1
+    access_year: 2054        # preservation age 60 (drawn only once retired)
+    allocation: { equity: 0.85, bond: 0.10, cash: 0.05 }   # long horizon -> growth-tilted
+    legacy_return: 0.067
+  person2_super:
+    wrapper: super
+    balance: 110000
+    owner: person2
+    access_year: 2052        # lump-sum access = person2's retirement (age 60)
+    allocation: { equity: 0.80, bond: 0.20 }
+    legacy_return: 0.067
+
+liabilities:
+  tax_liability: 0           # outstanding at start; settled year 1
+
+reserve_floor: 30000         # within cash; never drawn below this (grown at cash rate)
+
+# State pensions: frozen nominal if non-indexed (real value declines over time).
+pensions:
+  person2: { start_year: 2059, amount_today: 23946, indexed: false }   # SPA 67 (b.1992)
+  person1: { start_year: 2062, amount_today: 23946, indexed: false }   # SPA 68 (b.1994)
+  au_age_pension: 0
+
+# Income/expense phases. Boundaries are EVENT names (resolved to years), never
+# hard-coded. Income is GROSS (the tax engine computes take-home). Today's money.
+phases:
+  - name: working
+    from_event: start              # 2026
+    to_event: person2_retires      # exclusive
+    income:
+      # other_deductions = post-tax, CONSUMED (not saved): e.g. study-loan
+      # repayments, income protection / life insurance, unmodelled packaging.
+      person1: { salary: 120000, bonus: 0, concessional_super: 20000, other_deductions: 0 }
+      person2: { salary: 100000, bonus: 0, concessional_super: 18000, other_deductions: 0 }
+    expenses:
+      living: 60000
+      rent: 36000
+      school: 12000
+      ip_carry: 0                  # investment-property carry (scenarios may add)
+  - name: person1_only
+    from_event: person2_retires    # 2052
+    to_event: person1_retires
+    income:
+      person1: { salary: 120000, bonus: 0, concessional_super: 20000, other_deductions: 0 }
+      person2: { salary: 0, bonus: 0, concessional_super: 0, other_deductions: 0 }
+    expenses:
+      living: 55000                # ex-housing (mortgage added by house module)
+      rent: 0                      # moved into owned home
+      school: 0
+      ip_carry: 0
+  - name: retired
+    from_event: person1_retires    # 2054+
+    to_event: horizon
+    income: {}                     # pensions + super drawdown only
+
+# Retirement spend (top-level so scenarios can override sparsely).
+retirement_spending:
+  strategy: blanchett_smile
+  base: 90000
+  extra_rent_today: 0          # > 0 only in rent-forever scenarios (no owned home)
+
+# Time-keyed events. Years configurable; changing one cascades to phase
+# boundaries, accumulation length, super bridge and decumulation start.
+events:
+  start:                  { type: marker, year: 2026 }
+  person2_retires:        { type: retire, person: person2, year: 2052 }   # age 60
+  person1_retires:        { type: retire, person: person1, year: 2054 }   # age 60
+  house_purchase:         { type: house_buy, year: 2030 }
+  inheritance:            { type: inflow, year: 2050 }
+  person2_super_access:   { type: super_access, person: person2, year: 2052 }
+  person1_super_access:   { type: super_access, person: person1, year: 2054 }  # doc only (gate = account access_year)
+  person2_foreign_pension:     { type: pension_start, person: person2, year: 2059 }
+  person1_foreign_pension:     { type: pension_start, person: person1, year: 2062 }
+  horizon:                { type: marker, year: 2086 }
+
+# Non-concessional super contributions: move idle cash into a member's super (no
+# entry tax). Left empty in this example (a young couple isn't doing a bring-forward
+# yet). To use: add { person, source, amount, years }.
+super_contributions: []
+
+# House. Omit/null this block => "rent forever". Price in today's money,
+# grown at the growth schedule to the purchase year.
+house:
+  target_price_today: 700000
+  purchase_event: house_purchase
+  growth_asset: property         # fallback CMA if `growth` schedule omitted
+  deposit_pct: 0.10
+  lmi: true                      # < 20% deposit typically incurs lenders mortgage insurance
+  stamp_duty_pct: 0.046
+  stamp_duty_fixed: 5000
+  payoff_at_retirement: full     # full | keep | { fraction: 0.5 }
+  mortgage_rate: 0.065
+  ring_fence_as_aged_care: true  # excluded from drawdown pool; funds aged care
+  # Home-specific growth schedule (decoupled from the property CMA). Ordered;
+  # `nominal` = absolute nominal rate, `real` = real rate (nominal = real + cpi).
+  # Last entry (no until_year) is open-ended. A neutral ~2% real long-run trend.
+  growth:
+    - { real: 0.02 }
+
+inheritance:
+  source_currency: AUD
+  value_today_foreign: 0               # documentation only
+  variants: { full: 200000, haircut: 100000, zero: 0 }   # AUD, today's money
+  selected: full
+  arrival_event: inheritance
+  grows_with_inflation: true       # estate grows CPI start->arrival
+
+# Spending strategies (retired phase selects one). All params configurable.
+spending_strategies:
+  blanchett_smile:                 # the glidepath (Blanchett retirement smile)
+    peg: older_partner
+    flat_until_age: 70
+    decline_rate: 0.02             # -2%/yr real after 70
+    floor_multiplier: 0.75
+  constant_real:
+    {}                             # flat real spend at base
+  guardrails:                      # Guyton-Klinger / Kitces risk-based
+    upper_rail: 1.20
+    lower_rail: 0.80
+    adjust: 0.10
+    inflation_cap: 0.06
+  vanguard_dynamic:                # ceiling/floor collar
+    ceiling: 0.05
+    floor: -0.015
+
+aged_care:
+  enabled: true
+  cost_per_person_today: 71000     # recurrent fees
+  incremental_fraction: 0.56       # incremental over normal late-life living
+  episodes: 2
+  episode_years: 2
+  funded_from: portfolio           # portfolio | mortgage | house (see engine docs)
+  rad_refundable: true
+
+# Australian tax (resident). Params only; tax.py applies them. Replace with your
+# own jurisdiction's parameters if not modelling Australia.
+tax:
+  income_brackets:                 # 2024-25 AU resident marginal rates
+    - { up_to: 18200,  rate: 0.00 }
+    - { up_to: 45000,  rate: 0.16 }
+    - { up_to: 135000, rate: 0.30 }
+    - { up_to: 190000, rate: 0.37 }
+    - { up_to: null,   rate: 0.45 }
+  medicare_levy: 0.02
+  super:
+    contributions_tax: 0.15
+    div293_threshold: 250000
+    div293_extra: 0.15
+    earnings_tax_accum: 0.15
+    earnings_tax_pension: 0.0
+    div296_threshold: 3000000
+    div296_extra: 0.15
+    concessional_cap: 30000
+    nonconcessional_cap: 120000
+    nonconcessional_bringforward: 360000
+  cgt:
+    method: discount               # discount | indexation
+    discount: 0.50
+    enabled_2027: false
+    change_year: 2027
+    min_rate: 0.30
+  franking_ratio: 0.40             # AU-equity share of ETF equity income that is franked
+  company_tax_rate: 0.30           # franking credit = franked dividend x rate/(1-rate)
+  foreign_pension_assessable: true  # foreign pension drawdown assessable in AU
+  foreign_pension_withdrawal_rate: 0.30 # marginal rate on the growth (AFE) portion drawn
+
+# Retirement drawdown method. 'proportional' draws the need pro-rata across ALL
+# accessible pots (so foreign pensions are genuinely consumed + taxed). 'waterfall'
+# = tax-efficient order (cash->etf->super->pensions), leaving big pots compounding.
+drawdown:
+  method: proportional
+
+monte_carlo:
+  trials: 10000
+  distribution: lognormal          # lognormal | bootstrap
+  block_years: 4                   # for bootstrap mode
+  seed: 42
+  capital_preserved_fraction: 0.85 # terminal real >= this x start => "capital preserved"
+
+stress:
+  overlays:
+    - { name: year1_crash, type: shock_year, year_offset: 1, equity_return: -0.35 }
+    - { name: sustained_low, type: derate, amount: -0.02 }
+    - { name: high_inflation, type: inflation_shock, cpi: 0.05 }
+    - { name: longevity_tail, type: extend_horizon, to_age: 100 }
+    - { name: house_correction_20, type: house_shock, year_offset: 1, house_return: -0.20 }
+    - { name: house_correction_30, type: house_shock, year_offset: 1, house_return: -0.30 }
+    # Aged-care tail: incremental fees hit the INVESTIBLE POOL at a fuller cost
+    # (0.8 of recurrent) over longer 3-yr episodes.
+    - { name: aged_care_portfolio, type: aged_care_portfolio, incremental_fraction: 0.8, episode_years: 3 }
+
+# Legacy regression mode: flat per-account returns (uses each account's
+# legacy_return), a simple deterministic projection. --legacy flag only.
+legacy:
+  decum_return: 0.065
+  use_account_legacy_returns: true

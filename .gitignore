@@ -1,0 +1,20 @@
+# Repo-wide ignores. (model/.gitignore handles model/-specific paths:
+# its .venv/, the generated outputs/, __pycache__, etc.)
+
+# OS / editor cruft
+.DS_Store
+*.swp
+*~
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# Stray logs
+*.log
+
+# Local Claude Code settings (machine-specific; not for the shared repo)
+.claude/settings.local.json

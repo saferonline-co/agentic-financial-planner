@@ -1,0 +1,97 @@
+# Named scenarios — SPARSE deep-merge overrides of the base config.
+# The base config IS the "recommended" path. Each scenario changes only what differs,
+# so you can ask "what if I retire a year earlier / buy a cheaper home / get no
+# inheritance / spend less" without duplicating the whole config.
+#
+# These illustrative scenarios are written against config.example.yaml (the fictional
+# demo: Person 1 retires 2054, base spend $90k, home $0.70M). They are deliberately
+# generic examples — replace the names and numbers with your own once your config is
+# filled in.
+
+scenarios:
+
+  # A true alias of the base config — no overrides; the base config IS the
+  # recommended path. Kept as an explicit (empty) scenario so that
+  # `--scenario recommended` resolves and reports read clearly.
+  recommended: {}
+
+  flat_baseline:
+    # Pessimistic comparison: flat real spend for the whole retirement (no glidepath).
+    retirement_spending: { strategy: constant_real, base: 90000 }
+
+  retire_earlier:
+    # Retire earlier than the base (sensitivity to the master lever).
+    events: { person1_retires: { year: 2052 } }
+
+  spend_lower:
+    # Lower retirement spend target.
+    retirement_spending: { strategy: blanchett_smile, base: 70000 }
+
+  guardrails:
+    # Dynamic Guyton-Klinger spending instead of the fixed glidepath.
+    retirement_spending: { strategy: guardrails, base: 90000 }
+
+  rent_forever:
+    # Never buy; keep renting through retirement.
+    house: null
+    retirement_spending: { strategy: blanchett_smile, base: 90000, extra_rent_today: 30000 }
+
+  # ---- house-price levers ----
+  house_cheaper:
+    # Buy a cheaper home (quantifies the capital-preservation gain).
+    house: { target_price_today: 550000 }
+
+  house_dearer:
+    # Trade up to a dearer home (quantifies the capital-preservation cost).
+    house: { target_price_today: 900000 }
+
+  house_dearer_combo:
+    # A dearer home, full inheritance, retire earlier, glidepath spend.
+    house: { target_price_today: 900000 }
+    events: { person1_retires: { year: 2042 } }
+    inheritance: { selected: full }
+    retirement_spending: { strategy: blanchett_smile, base: 90000 }
+
+  # ---- inheritance sensitivity ----
+  inheritance_zero:
+    inheritance: { selected: zero }
+
+  inheritance_haircut:
+    inheritance: { selected: haircut }
+
+  # ---- pension indexation sensitivity (e.g. if pensions become inflation-linked) ----
+  pensions_indexed:
+    pensions:
+      person1: { indexed: true }
+      person2: { indexed: true }
+
+  # ---- proposed CGT regime change (illustrative; off by default) ----
+  cgt_2027:
+    tax: { cgt: { enabled_2027: true } }
+
+  # ---- house-growth sensitivity (replace the base growth schedule) ----
+  house_growth_optimistic:
+    house: { growth: [ { nominal: 0.05 } ] }
+
+  house_growth_lower:
+    house: { growth: [ { real: 0.01 } ] }
+
+  # ---- "find a way to save more per year until retirement" ----
+  save_extra_25k:
+    # Extra $25k/yr (today's money) of free cash from the start until retirement,
+    # invested in the taxable ETF bucket.
+    extra_savings_today: 25000
+
+  save_extra_25k_super:
+    # Same found savings, routed into person2's super as a non-concessional
+    # contribution (no entry tax) — shelters earnings at 15%/0% vs taxable ETF.
+    extra_savings_today: 25000
+    extra_savings_to_super: person2
+
+  # ---- maximise person2's super: max concessional cap + NCC bring-forward, and
+  #      sweep the rest of the idle cash into ETF, holding a $50k buffer ----
+  super_max_deploy:
+    concessional_override: { person2: 30000 }
+    super_contributions:
+      - { person: person2, source: cash, amount: 120000, years: [2026, 2027, 2028] }
+    cash_sweep_floor_today: 50000

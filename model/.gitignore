@@ -1,0 +1,14 @@
+.venv/
+# YOUR private plan lives in config/personal/ — real financial data, never
+# committed. The whole directory is ignored (so any file you drop in is safe by
+# default); only its README is tracked. Create your plan by copying the tracked
+# config.skeleton.yaml into it: cp config/config.skeleton.yaml config/personal/config.yaml
+config/personal/*
+!config/personal/README.md
+# All of outputs/ is generated (regenerable via run.py); DECISIONS.md is the
+# curated, versioned record of how the headline numbers moved. Ignore wholesale
+# rather than only the top level — keeps scenarios/ out too (was inconsistent).
+outputs/
+__pycache__/
+*.pyc
+.pytest_cache/
